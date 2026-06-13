@@ -142,12 +142,10 @@ pub struct PyFlatIter {
     with(IterNext, Iterable, AsMapping, Representable)
 )]
 impl PyFlatIter {
-    #[pymethod]
     fn __len__(&self) -> usize {
         self.array.data.read().unwrap().size()
     }
 
-    #[pymethod]
     fn __getitem__(&self, key: PyObjectRef, vm: &VirtualMachine) -> PyResult<PyObjectRef> {
         let data = self.array.data.read().unwrap();
         let total = data.size();
@@ -157,7 +155,6 @@ impl PyFlatIter {
         Ok(scalar_to_py(s, vm))
     }
 
-    #[pymethod]
     fn __setitem__(
         &self,
         key: PyObjectRef,
@@ -1000,7 +997,7 @@ impl PyNdArray {
 
         // Detect structured dtype strings (comma-separated like 'i4,f8')
         // and delegate to Python's numpy._astype_structured(self, dtype_arg)
-        if dtype_str.as_str().contains(',') || dtype_obj.downcast_ref::<PyList>().is_some() {
+        if dtype_str.expect_str().contains(',') || dtype_obj.downcast_ref::<PyList>().is_some() {
             let numpy_mod = vm.import("numpy", 0)?;
             let helper = numpy_mod.get_attr("_astype_structured", vm)?;
             let self_obj: PyObjectRef =
@@ -1009,7 +1006,7 @@ impl PyNdArray {
             return Ok(result);
         }
 
-        let dtype_name = dtype_str.as_str();
+        let dtype_name = dtype_str.expect_str();
         if dtype_name.starts_with("datetime64[")
             || dtype_name.starts_with("timedelta64[")
             || dtype_name.starts_with("M8[")
@@ -1037,7 +1034,7 @@ impl PyNdArray {
                     .clone()
                     .try_into_value(vm)
                     .map_err(|_| vm.new_type_error("casting must be a string".to_owned()))?;
-                Ok(s.as_str().to_owned())
+                Ok(s.expect_str().to_owned())
             })
             .transpose()?
             .unwrap_or_else(|| "unsafe".to_owned());
@@ -1790,16 +1787,6 @@ impl PyNdArray {
 
     // --- Indexing ---
 
-    #[pymethod]
-    fn __getitem__(
-        zelf: PyRef<Self>,
-        key: PyObjectRef,
-        vm: &VirtualMachine,
-    ) -> PyResult<PyObjectRef> {
-        let parent_obj: PyObjectRef = zelf.as_object().to_owned();
-        zelf.getitem_impl(key, parent_obj, vm)
-    }
-
     /// Internal implementation of `__getitem__`.  `parent_obj` is the `PyObjectRef` of
     /// the array being indexed, stored as the `base` on returned view arrays.
     fn getitem_impl(
@@ -2346,7 +2333,7 @@ impl PyNdArray {
             if vm.is_none(casting_obj) {
                 "same_kind".to_string()
             } else {
-                let s = casting_obj.str(vm)?.as_str().to_string();
+                let s = casting_obj.str(vm)?.expect_str().to_string();
                 let valid = ["no", "equiv", "safe", "same_kind", "unsafe"];
                 if !valid.contains(&s.as_str()) {
                     return Err(vm.new_value_error(
@@ -2582,25 +2569,9 @@ impl PyNdArray {
     // --- String representations ---
 
     #[pymethod]
-    fn __repr__(&self) -> String {
-        let data = self.data.read().unwrap();
-        format_array(&data, true)
-    }
-
-    #[pymethod]
     fn __str__(&self) -> String {
         let data = self.data.read().unwrap();
         format_array(&data, false)
-    }
-
-    #[pymethod]
-    fn __len__(&self) -> usize {
-        let data = self.data.read().unwrap();
-        if data.ndim() == 0 {
-            0
-        } else {
-            data.shape()[0]
-        }
     }
 
     // --- Tier 27 Group A methods ---
@@ -2703,7 +2674,7 @@ impl PyNdArray {
         let values = v.data.read().unwrap();
         let side_str = side
             .into_option()
-            .map(|s| s.as_str().to_string())
+            .map(|s| s.expect_str().to_string())
             .unwrap_or_else(|| "left".to_string());
         inner
             .searchsorted(&values, &side_str)
@@ -3055,7 +3026,7 @@ fn check_invalid_errstate(result_obj: &PyObjectRef, vm: &VirtualMachine) -> PyRe
                                 if s == "raise" {
                                     return Err(vm.new_exception_msg(
                                         vm.ctx.exceptions.floating_point_error.to_owned(),
-                                        "invalid value encountered in subtract".to_owned(),
+                                        "invalid value encountered in subtract".to_owned().into(),
                                     ));
                                 } else if s == "call" {
                                     // Call the error callback
@@ -3096,7 +3067,7 @@ fn check_division_errstate(result_obj: &PyObjectRef, vm: &VirtualMachine) -> PyR
                                 if data.has_inf() || data.has_nan() {
                                     return Err(vm.new_exception_msg(
                                         vm.ctx.exceptions.floating_point_error.to_owned(),
-                                        "divide by zero encountered in divide".to_owned(),
+                                        "divide by zero encountered in divide".to_owned().into(),
                                     ));
                                 }
                             }
@@ -4570,7 +4541,6 @@ impl PyFlagsObj {
         self.map.get(key).copied().unwrap_or(false)
     }
 
-    #[pymethod]
     fn __getitem__(&self, key: PyObjectRef, vm: &VirtualMachine) -> PyResult<bool> {
         let k: String = key.try_into_value(vm)?;
         self.map

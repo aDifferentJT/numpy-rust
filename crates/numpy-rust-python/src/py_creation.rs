@@ -41,7 +41,7 @@ fn scalar_ndarray_with_dtype(
     }
 
     if let Some(s) = obj.downcast_ref::<vm::builtins::PyStr>() {
-        let arr = NdArray::from_vec(vec![s.as_str().to_owned()])
+        let arr = NdArray::from_vec(vec![s.expect_str().to_owned()])
             .reshape(&[])
             .map_err(|e| vm.new_type_error(e.to_string()))?;
         return Ok(match dtype {
@@ -140,7 +140,7 @@ fn build_sequence_array(
                 .iter()
                 .map(|item| {
                     item.downcast_ref::<PyStr>()
-                        .map(|s| s.as_str().to_owned())
+                        .map(|s| s.expect_str().to_owned())
                         .ok_or_else(|| vm.new_type_error("mixed types in sequence".to_owned()))
                 })
                 .collect::<PyResult<Vec<_>>>()?;

@@ -63,7 +63,7 @@ impl PyStructuredArray {
         let dtype_json = dtype_json_obj
             .downcast_ref::<PyStr>()
             .ok_or_else(|| vm.new_type_error("dtype_json must be a str".to_owned()))?
-            .as_str()
+            .expect_str()
             .to_owned();
         // Parse fields: list of [name_str, PyNdArray]
         let fields_list = fields_obj.try_into_value::<Vec<PyObjectRef>>(vm)?;
@@ -78,7 +78,7 @@ impl PyStructuredArray {
             let name = tup[0]
                 .downcast_ref::<PyStr>()
                 .ok_or_else(|| vm.new_type_error("field name must be a str".to_owned()))?
-                .as_str()
+                .expect_str()
                 .to_owned();
             let py_arr = tup[1].downcast_ref::<PyNdArray>().ok_or_else(|| {
                 vm.new_type_error(format!("field '{}': value must be ndarray", name))
@@ -142,16 +142,14 @@ impl PyStructuredArray {
         vm.ctx.new_list(names).into()
     }
 
-    #[pymethod]
     fn __len__(&self) -> usize {
         self.inner.read().unwrap().len()
     }
 
-    #[pymethod]
     fn __getitem__(&self, key: PyObjectRef, vm: &VirtualMachine) -> PyResult<PyObjectRef> {
         // String key → return PyNdArray column
         if let Some(key_str) = key.downcast_ref::<PyStr>() {
-            let name = key_str.as_str();
+            let name = key_str.expect_str();
             let col_data = {
                 let inner = self.inner.read().unwrap();
                 inner
@@ -169,7 +167,7 @@ impl PyStructuredArray {
             {
                 let names: Vec<String> = key_list
                     .iter()
-                    .map(|k| k.downcast_ref::<PyStr>().unwrap().as_str().to_owned())
+                    .map(|k| k.downcast_ref::<PyStr>().unwrap().expect_str().to_owned())
                     .collect();
                 // Extract subset data under lock, then drop lock
                 let (subset_fields, shape, dtype_json) = {
@@ -255,7 +253,6 @@ impl PyStructuredArray {
         )))
     }
 
-    #[pymethod]
     fn __setitem__(
         &self,
         key: PyObjectRef,
@@ -263,7 +260,7 @@ impl PyStructuredArray {
         vm: &VirtualMachine,
     ) -> PyResult<()> {
         if let Some(key_str) = key.downcast_ref::<PyStr>() {
-            let name = key_str.as_str();
+            let name = key_str.expect_str();
             let mut inner = self.inner.write().unwrap();
             let py_arr = value.downcast_ref::<PyNdArray>().ok_or_else(|| {
                 vm.new_type_error("field assignment value must be ndarray".to_owned())

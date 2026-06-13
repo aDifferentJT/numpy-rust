@@ -25,33 +25,33 @@ pub mod _numpy_native {
     use vm::class::PyClassImpl;
     use vm::{PyObjectRef, PyPayload, PyResult, VirtualMachine};
 
-    // Register the ndarray class type
+    // Register the ndarray class type.
     #[pyattr]
-    fn ndarray(vm: &VirtualMachine) -> vm::builtins::PyTypeRef {
-        PyNdArray::make_class(&vm.ctx)
+    fn ndarray(_vm: &VirtualMachine) -> vm::builtins::PyTypeRef {
+        PyNdArray::make_static_type()
     }
 
     #[pyattr]
-    fn ndarray_iterator(vm: &VirtualMachine) -> vm::builtins::PyTypeRef {
-        PyNdArrayIter::make_class(&vm.ctx)
+    fn ndarray_iterator(_vm: &VirtualMachine) -> vm::builtins::PyTypeRef {
+        PyNdArrayIter::make_static_type()
     }
 
     #[pyattr]
-    fn flatiter(vm: &VirtualMachine) -> vm::builtins::PyTypeRef {
-        PyFlatIter::make_class(&vm.ctx)
+    fn flatiter(_vm: &VirtualMachine) -> vm::builtins::PyTypeRef {
+        PyFlatIter::make_static_type()
     }
 
     #[pyattr]
-    fn flagsobj(vm: &VirtualMachine) -> vm::builtins::PyTypeRef {
-        PyFlagsObj::make_class(&vm.ctx)
+    fn flagsobj(_vm: &VirtualMachine) -> vm::builtins::PyTypeRef {
+        PyFlagsObj::make_static_type()
     }
 
     use crate::py_struct_array::PyStructuredArray;
 
     #[allow(non_snake_case)]
     #[pyattr]
-    fn StructuredArray(vm: &VirtualMachine) -> vm::builtins::PyTypeRef {
-        PyStructuredArray::make_class(&vm.ctx)
+    fn StructuredArray(_vm: &VirtualMachine) -> vm::builtins::PyTypeRef {
+        PyStructuredArray::make_static_type()
     }
 
     // --- Creation functions ---
@@ -234,7 +234,7 @@ pub mod _numpy_native {
         vm: &VirtualMachine,
     ) -> PyResult<PyNdArray> {
         let dt = match dtype.into_option() {
-            Some(s) => Some(py_array::parse_dtype(s.as_str(), vm)?),
+            Some(s) => Some(py_array::parse_dtype(s.expect_str(), vm)?),
             None => None,
         };
         py_creation::py_zeros(&shape, dt, vm)
@@ -247,7 +247,7 @@ pub mod _numpy_native {
         vm: &VirtualMachine,
     ) -> PyResult<PyNdArray> {
         let dt = match dtype.into_option() {
-            Some(s) => Some(py_array::parse_dtype(s.as_str(), vm)?),
+            Some(s) => Some(py_array::parse_dtype(s.expect_str(), vm)?),
             None => None,
         };
         py_creation::py_ones(&shape, dt, vm)
@@ -263,7 +263,7 @@ pub mod _numpy_native {
     ) -> PyResult<PyNdArray> {
         let step = step.unwrap_or(1.0);
         let dt = match dtype.into_option() {
-            Some(s) => Some(py_array::parse_dtype(s.as_str(), vm)?),
+            Some(s) => Some(py_array::parse_dtype(s.expect_str(), vm)?),
             None => None,
         };
         Ok(PyNdArray::from_core(numpy_rust_core::creation::arange(
@@ -287,7 +287,7 @@ pub mod _numpy_native {
         let m_val = m.into_option();
         let k_val = k.unwrap_or(0);
         let dt = match dtype.into_option() {
-            Some(s) => py_array::parse_dtype(s.as_str(), vm)?,
+            Some(s) => py_array::parse_dtype(s.expect_str(), vm)?,
             None => numpy_rust_core::DType::Float64,
         };
         Ok(PyNdArray::from_core(
@@ -305,7 +305,7 @@ pub mod _numpy_native {
     ) -> PyResult<PyNdArray> {
         let shape_vec = py_array::extract_shape(&shape, vm)?;
         let dt = match dtype.into_option() {
-            Some(s) => py_array::parse_dtype(s.as_str(), vm)?,
+            Some(s) => py_array::parse_dtype(s.expect_str(), vm)?,
             None => numpy_rust_core::DType::Float64,
         };
         Ok(PyNdArray::from_core(numpy_rust_core::creation::full(
@@ -319,8 +319,8 @@ pub mod _numpy_native {
         type2: vm::PyRef<vm::builtins::PyStr>,
         vm: &VirtualMachine,
     ) -> PyResult<String> {
-        let dt1 = py_array::parse_dtype(type1.as_str(), vm)?;
-        let dt2 = py_array::parse_dtype(type2.as_str(), vm)?;
+        let dt1 = py_array::parse_dtype(type1.expect_str(), vm)?;
+        let dt2 = py_array::parse_dtype(type2.expect_str(), vm)?;
         if dt1 == numpy_rust_core::DType::Str || dt2 == numpy_rust_core::DType::Str {
             return Err(
                 vm.new_type_error("Cannot promote string dtype with numeric dtype".to_owned())
@@ -964,7 +964,7 @@ pub mod _numpy_native {
     ) -> PyResult<PyNdArray> {
         let arr = obj_to_ndarray(&a, vm)?;
         let little = match bitorder {
-            vm::function::OptionalArg::Present(s) => match s.as_str() {
+            vm::function::OptionalArg::Present(s) => match s.expect_str() {
                 "big" => false,
                 "little" => true,
                 other => {
@@ -991,7 +991,7 @@ pub mod _numpy_native {
     ) -> PyResult<PyNdArray> {
         let arr = obj_to_ndarray(&a, vm)?;
         let little = match bitorder {
-            vm::function::OptionalArg::Present(s) => match s.as_str() {
+            vm::function::OptionalArg::Present(s) => match s.expect_str() {
                 "big" => false,
                 "little" => true,
                 other => {
@@ -1291,7 +1291,7 @@ pub mod _numpy_native {
         let operands: Vec<numpy_rust_core::NdArray> =
             args.iter().map(|a| a.inner().clone()).collect();
         let refs: Vec<&numpy_rust_core::NdArray> = operands.iter().collect();
-        numpy_rust_core::einsum(subscripts.as_str(), &refs)
+        numpy_rust_core::einsum(subscripts.expect_str(), &refs)
             .map(|arr| py_array::ndarray_or_scalar(arr, vm))
             .map_err(|e| vm.new_value_error(e.to_string()))
     }
@@ -1419,7 +1419,7 @@ pub mod _numpy_native {
         side: vm::function::OptionalArg<vm::PyRef<vm::builtins::PyStr>>,
         vm: &VirtualMachine,
     ) -> PyResult<PyObjectRef> {
-        let side_str = side.as_ref().map(|s| s.as_str()).unwrap_or("left");
+        let side_str = side.as_ref().map(|s| s.expect_str()).unwrap_or("left");
         a.inner()
             .searchsorted(&v.inner(), side_str)
             .map(|arr| py_array::ndarray_or_scalar(arr, vm))
@@ -1719,7 +1719,7 @@ pub mod _numpy_native {
         vm: &VirtualMachine,
     ) -> PyResult<PyNdArray> {
         a.inner()
-            .str_startswith(prefix.as_str())
+            .str_startswith(prefix.expect_str())
             .map(PyNdArray::from_core)
             .map_err(|e| vm.new_type_error(e.to_string()))
     }
@@ -1731,7 +1731,7 @@ pub mod _numpy_native {
         vm: &VirtualMachine,
     ) -> PyResult<PyNdArray> {
         a.inner()
-            .str_endswith(suffix.as_str())
+            .str_endswith(suffix.expect_str())
             .map(PyNdArray::from_core)
             .map_err(|e| vm.new_type_error(e.to_string()))
     }
@@ -1744,7 +1744,7 @@ pub mod _numpy_native {
         vm: &VirtualMachine,
     ) -> PyResult<PyNdArray> {
         a.inner()
-            .str_replace(old.as_str(), new.as_str())
+            .str_replace(old.expect_str(), new.expect_str())
             .map(PyNdArray::from_core)
             .map_err(|e| vm.new_type_error(e.to_string()))
     }
@@ -1930,7 +1930,7 @@ pub mod _numpy_native {
         indexing: vm::function::OptionalArg<vm::PyRef<vm::builtins::PyStr>>,
         vm: &VirtualMachine,
     ) -> PyResult<PyObjectRef> {
-        let idx = indexing.as_ref().map(|s| s.as_str()).unwrap_or("xy");
+        let idx = indexing.as_ref().map(|s| s.expect_str()).unwrap_or("xy");
         let arr_list = extract_core_array_sequence(&arrays, vm)?;
         let refs: Vec<&numpy_rust_core::NdArray> = arr_list.iter().collect();
         let result =

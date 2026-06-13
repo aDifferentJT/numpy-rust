@@ -3,7 +3,7 @@ members = ["crates/*"]
 resolver = "2"
 
 [workspace.dependencies]
-rustpython = { git = "https://github.com/RustPython/RustPython", rev = "f9ca63893", default-features = false }
-rustpython-vm = { git = "https://github.com/RustPython/RustPython", rev = "f9ca63893" }
-rustpython-derive = { git = "https://github.com/RustPython/RustPython", rev = "f9ca63893" }
+rustpython = { version = "0.5.0", default-features = false }
+rustpython-vm = { version = "0.5.0" }
+rustpython-derive = { version = "0.5.0" }
 
