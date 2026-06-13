@@ -4,6 +4,6 @@ resolver = "2"
 
 [workspace.dependencies]
 rustpython = { version = "0.5.0", default-features = false }
-rustpython-vm = { version = "0.5.0" }
-rustpython-derive = { version = "0.5.0" }
+rustpython-vm = { version = "0.5.0", default-features = false }
+rustpython-derive = { version = "0.5.0", default-features = false }
 

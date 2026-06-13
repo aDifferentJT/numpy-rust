@@ -5,7 +5,6 @@ from ._helpers import _flat_arraylike_data
 from ._creation import array, asarray
 from ._manipulation import reshape
 import struct as _struct
-import zipfile as _zipfile
 import ast as _ast
 import io as _io_module
 import re as _re
@@ -651,6 +650,10 @@ class NpzFile:
     """Dict-like wrapper for .npz archives."""
 
     def __init__(self, file):
+        # zipfile (and its os dependency) is imported lazily:
+        # .npz I/O needs filesystem access, which is unavailable without host_env
+        # importing it at module load would block `import numpy` entirely.
+        import zipfile as _zipfile
         # Track whether we own a file descriptor (for cleanup by callers)
         if isinstance(file, str):
             self.fid = open(file, 'rb')
@@ -724,6 +727,8 @@ class NpzFile:
 
 
 def _savez_impl(file, args, kwds, compress):
+    # See NpzFile.__init__: zipfile is imported lazily
+    import zipfile as _zipfile
     arrays = {}
     for i, arr in enumerate(args):
         arrays[f'arr_{i}'] = asarray(arr)

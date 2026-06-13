@@ -9,5 +9,5 @@ path = "src/main.rs"
 
 [dependencies]
 numpy-rust-python = { path = "../numpy-rust-python" }
-rustpython = { workspace = true, features = ["freeze-stdlib", "threading", "host_env"] }
+rustpython = { workspace = true, features = ["freeze-stdlib", "threading"] }
 rustpython-vm = { workspace = true }
